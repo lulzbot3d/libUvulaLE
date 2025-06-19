@@ -20,7 +20,7 @@ find_package(pybind11 REQUIRED)
 
 pybind11_add_module(libuvula libuvula.cpp)
 
-add_library(UNWRAP ./src/unwrap.cpp)
+add_library(UNWRAP ./src/unwrap.cpp "src/xatlas.cpp")
 target_include_directories(UNWRAP PUBLIC ./include)
 
 target_link_libraries(libuvula PRIVATE UNWRAP)

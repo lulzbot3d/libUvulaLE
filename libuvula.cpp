@@ -27,7 +27,10 @@ py::array_t<float> unwrap(const py::array_t<float>& vertices_, const py::array_t
     std::vector<std::tuple<float, float>> res(shape[0]);
 
     // do the actual calculation here
-    unwrap_algo(vertices, indices, res);
+    if (! unwrap_algo(vertices, indices, res))
+    {
+        throw std::runtime_error("Couldn't unwrap UV's!");
+    }
 
     // send output
     return py::array(py::buffer_info(
