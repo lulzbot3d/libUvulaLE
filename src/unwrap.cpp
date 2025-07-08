@@ -2,6 +2,8 @@
 
 #include "unwrap.hpp"
 
+#include <cstdio>
+
 #include "xatlas_c.h"
 #include "xatlas.h"
 
@@ -9,48 +11,46 @@
 bool unwrap_algo(
     const std::vector<std::tuple<float, float, float>>& vertices,
     const std::vector<std::tuple<int32_t, int32_t, int32_t>>& indices,
-    std::vector<std::tuple<float, float>>& uv_coords
-)
+    uint32_t desired_definition,
+    std::vector<std::tuple<float, float>>& uv_coords,
+    uint32_t &texture_width,
+    uint32_t &texture_height)
 {
-    // NOTE: Moslty copied from the xatlas example(s) at the moment.
-    // TODO: Make this not crash!
-
     xatlas::Atlas* atlas = xatlas::Create();
-    uint32_t totalVertices = 0, totalFaces = 0;
-    {
-        // NOTE: It goes wrong here; the counts, sizes and data-pointers here are probably all wrong.
 
-            xatlas::UvMeshDecl meshDecl;
-            meshDecl.vertexCount = vertices.size();
-            meshDecl.vertexUvData = uv_coords.data();
-            meshDecl.vertexStride = sizeof(float) * 3;
-            meshDecl.indexCount = indices.size();
-            meshDecl.indexData = indices.data();
-            meshDecl.indexFormat = xatlas::IndexFormat::UInt32;
-            xatlas::AddMeshError error = xatlas::AddUvMesh(atlas, meshDecl);
-            if (error != xatlas::AddMeshError::Success) {
-                xatlas::Destroy(atlas);
-                printf("\rError adding mesh\n");
-                return false;
-            }
-            totalVertices += meshDecl.vertexCount;
-            totalFaces += meshDecl.indexCount / 3;
+    xatlas::MeshDecl meshDecl;
+    meshDecl.vertexPositionData = vertices.data();
+    meshDecl.indexData = indices.data();
+    meshDecl.vertexCount = vertices.size();
+    meshDecl.vertexPositionStride = sizeof(float) * 3;
+    meshDecl.indexCount = indices.size() * 3;
+    meshDecl.indexFormat = xatlas::IndexFormat::UInt32;
+    if (xatlas::AddMesh(atlas, meshDecl) != xatlas::AddMeshError::Success)
+    {
+        xatlas::Destroy(atlas);
+        printf("\rError adding mesh\n");
+        return false;
     }
-    printf("   %u total vertices\n", totalVertices);
-    printf("   %u total triangles\n", totalFaces);
-    // Compute charts.
-    printf("Computing charts\n");
-    xatlas::ComputeCharts(atlas);
-    // Pack charts.
-    printf("Packing charts\n");
-    xatlas::PackCharts(atlas);
-    printf("   %d charts\n", atlas->chartCount);
-    printf("   %d atlases\n", atlas->atlasCount);
-    for (uint32_t i = 0; i < atlas->atlasCount; i++)
-        printf("      %d: %0.2f%% utilization\n", i, atlas->utilization[i] * 100.0f);
-    printf("   %ux%u resolution\n", atlas->width, atlas->height);
-    
-    // TODO: (Remove print-statements and) output the UV-coords from the atlas to `uv_coords`.
+
+    constexpr xatlas::ChartOptions chart_options;
+    const xatlas::PackOptions pack_options{.resolution = desired_definition};
+
+    xatlas::Generate(atlas, chart_options, pack_options);
+
+    // For some reason, the width and height need to be inverted to make the coordinates consistent
+    texture_width = atlas->height;
+    texture_height = atlas->width;
+
+    const xatlas::Mesh &output_mesh = *atlas->meshes;
+
+    const float width = static_cast<float>(atlas->width);
+    const float height = static_cast<float>(atlas->height);
+
+    for (size_t i = 0 ; i<output_mesh.vertexCount ; ++i)
+    {
+        const xatlas::Vertex &vertex = output_mesh.vertexArray[i];
+        uv_coords[vertex.xref] = std::make_tuple(vertex.uv[0] / width, vertex.uv[1] / height);
+    }
 
     xatlas::Destroy(atlas);
     return true;

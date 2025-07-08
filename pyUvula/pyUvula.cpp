@@ -4,9 +4,9 @@
 #include <pybind11/numpy.h>
 namespace py = pybind11;
 
-#include "./include/unwrap.hpp"
+#include "unwrap.hpp"
 
-py::array_t<float> unwrap(const py::array_t<float>& vertices_, const py::array_t<int32_t>& indices_)
+py::tuple unwrap(const py::array_t<float>& vertices_, const py::array_t<int32_t>& indices_, const uint32_t desired_definition)
 {
     // input shaping
     auto verts_buf = vertices_.request();
@@ -25,27 +25,30 @@ py::array_t<float> unwrap(const py::array_t<float>& vertices_, const py::array_t
     std::vector<py::ssize_t> shape = { static_cast<py::ssize_t>(vertices.size()), 2 };
     std::vector<py::ssize_t> strides = { static_cast<py::ssize_t>(sizeof(float) * shape[1]), static_cast<py::ssize_t>(sizeof(float)) };
     std::vector<std::tuple<float, float>> res(shape[0]);
+    uint32_t texture_width;
+    uint32_t texture_height;
 
     // do the actual calculation here
-    if (! unwrap_algo(vertices, indices, res))
+    if (! unwrap_algo(vertices, indices, desired_definition, res, texture_width, texture_height))
     {
         throw std::runtime_error("Couldn't unwrap UV's!");
     }
 
     // send output
-    return py::array(py::buffer_info(
+    return py::make_tuple(py::array(py::buffer_info(
         res.data(),
         strides[1],
         py::format_descriptor<float>::format(),
         shape.size(),
         shape,
         strides
-    ));
+    )), texture_width, texture_height);
 }
 
-PYBIND11_MODULE(libuvula, lib)
+PYBIND11_MODULE(pyUvula, module)
 {
-    lib.doc() = "UV-unwrapping library (or bindings to library), either ported from [xatlas|blender] or self-written (whichever one we end up with).";
+    module.doc() = "UV-unwrapping library (or bindings to library), either ported from [xatlas|blender] or self-written (whichever one we end up with).";
+    module.attr("__version__") = PYUVULA_VERSION;
 
-    lib.def("unwrap", &unwrap, "Given the vertices, indices of a mesh, unwrap UV for texture-coordinates.");
+    module.def("unwrap", &unwrap, "Given the vertices, indices of a mesh, unwrap UV for texture-coordinates.");
 }

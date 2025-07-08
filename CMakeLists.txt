@@ -1,30 +1,47 @@
-﻿# CMakeList.txt : CMake project for libuvula, include source and define project specific logic here.
-#
-cmake_minimum_required (VERSION 3.8)
+﻿cmake_minimum_required(VERSION 3.23)
+project(uvula)
 
-set (PYTHON_EXECUTABLE "C:/dvl/Cura/build/generators/cura_venv/Scripts/python.exe")
+find_package(standardprojectsettings REQUIRED)
+option(EXTENSIVE_WARNINGS "Build with all warnings" ON)
 
-# Enable Hot Reload for MSVC compilers if supported.
-if (POLICY CMP0141)
-  cmake_policy(SET CMP0141 NEW)
-  set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>")
+option(WITH_PYTHON_BINDINGS "Build with Python bindings: `pyUvula`" ON)
+if(WITH_PYTHON_BINDINGS)
+    set(PYUVULA_VERSION "1.0.0" CACHE STRING "Version of the pyuvula python bindings" )
+    message(STATUS "Configuring pyUvula version: ${PYUVULA_VERSION}")
+endif ()
+
+if(NOT DEFINED UVULA_VERSION)
+    message(FATAL_ERROR "UVULA_VERSION is not defined!")
 endif()
+message(STATUS "Configuring Uvula version: ${UVULA_VERSION}")
 
-project ("libuvula")
+set(UVULA_SRC
+        src/unwrap.cpp
+        src/xatlas.cpp
+)
+add_library(uvula STATIC ${UVULA_SRC})
 
-find_package(pybind11 REQUIRED)
+target_link_libraries(uvula
+        PUBLIC)
 
-# Include Conan-generated files
-#include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
-#conan_basic_setup()
+target_include_directories(uvula
+        PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+)
 
-pybind11_add_module(libuvula libuvula.cpp)
+target_compile_definitions(uvula
+    PUBLIC
+    UVULA_VERSION="${UVULA_VERSION}"
+)
 
-add_library(UNWRAP ./src/unwrap.cpp "src/xatlas.cpp")
-target_include_directories(UNWRAP PUBLIC ./include)
+use_threads(uvula)
+enable_sanitizers(uvula)
+if (${EXTENSIVE_WARNINGS})
+    set_project_warnings(uvula)
+endif ()
 
-target_link_libraries(libuvula PRIVATE UNWRAP)
-
-if (CMAKE_VERSION VERSION_GREATER 3.12)
-  set_property(TARGET libuvula PROPERTY CXX_STANDARD 20)
-endif()
+# --- Setup Python bindings ---
+if (WITH_PYTHON_BINDINGS)
+    add_subdirectory(pyUvula)
+endif ()
