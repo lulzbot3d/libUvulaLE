@@ -3,6 +3,8 @@
 #include "unwrap.hpp"
 
 #include <cstdio>
+#include <iostream>
+#include <ostream>
 
 #include "xatlas_c.h"
 #include "xatlas.h"
@@ -43,8 +45,8 @@ bool unwrap_algo(
 
     const xatlas::Mesh &output_mesh = *atlas->meshes;
 
-    const float width = static_cast<float>(atlas->width);
-    const float height = static_cast<float>(atlas->height);
+    const auto width = static_cast<float>(atlas->width);
+    const auto height = static_cast<float>(atlas->height);
 
     for (size_t i = 0 ; i<output_mesh.vertexCount ; ++i)
     {

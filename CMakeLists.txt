@@ -19,29 +19,34 @@ set(UVULA_SRC
         src/unwrap.cpp
         src/xatlas.cpp
 )
-add_library(uvula STATIC ${UVULA_SRC})
+add_library(libuvula STATIC ${UVULA_SRC})
 
-target_link_libraries(uvula
+target_link_libraries(libuvula
         PUBLIC)
 
-target_include_directories(uvula
+target_include_directories(libuvula
         PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
-target_compile_definitions(uvula
+target_compile_definitions(libuvula
     PUBLIC
     UVULA_VERSION="${UVULA_VERSION}"
 )
 
-use_threads(uvula)
-enable_sanitizers(uvula)
+use_threads(libuvula)
+enable_sanitizers(libuvula)
 if (${EXTENSIVE_WARNINGS})
-    set_project_warnings(uvula)
+    set_project_warnings(libuvula)
 endif ()
 
 # --- Setup Python bindings ---
 if (WITH_PYTHON_BINDINGS)
     add_subdirectory(pyUvula)
+endif ()
+
+# --- Setup command line interface (for testing purposes) ---
+if (WITH_CLI)
+    add_subdirectory(cli)
 endif ()

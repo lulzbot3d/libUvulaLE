@@ -1,41 +1,6 @@
 # (c) 2025, UltiMaker -- see LICENCE for details
 
 from conan import ConanFile
-from conan.tools.cmake import cmake_layout
-
-required_conan_version = ">=2.7.0"
-
-
-# class LibUvulaConan(ConanFile):
-#     name = "uvula"
-#     settings = "os", "compiler", "build_type", "arch"
-#     generators = "CMakeToolchain", "CMakeDeps"
-#
-#     def set_version(self):
-#         if not self.version:
-#             self.version = self.conan_data["version"]
-#
-#     def requirements(self):
-#         self.requires("pybind11/2.11.1")
-#
-#     #def build_requirements(self):
-#     #	self.tool_requires("cmake/>=3.8")
-#
-#     def layout(self):
-#         cmake_layout(self)
-#
-#     def package(self):
-#         copy(self, "*.pyd", src = os.path.join(self.build_folder, "libuvula"), dst = os.path.join(self.package_folder, "lib", "libuvula"), keep_path = False)
-#         packager = AutoPackager(self)
-#         packager.run()
-#
-#     def package_info(self):
-#         if self.in_local_cache:
-#             self.runenv_info.append_path("PYTHONPATH", os.path.join(self.package_folder, "lib", "libuvula"))
-#         else:
-#             self.runenv_info.append_path("PYTHONPATH", os.path.join(self.build_folder, "libuvula"))
-
-
 import os
 
 from conan import ConanFile
@@ -64,12 +29,14 @@ class UvulaConan(ConanFile):
         "fPIC": [True, False],
         "enable_extensive_warnings": [True, False],
         "with_python_bindings": [True, False],
+        "with_cli": [True, False],
     }
     default_options = {
         "shared": False,
         "fPIC": True,
         "enable_extensive_warnings": False,
         "with_python_bindings": True,
+        "with_cli": False,
     }
 
     def set_version(self):
@@ -126,6 +93,10 @@ class UvulaConan(ConanFile):
         if self.options.get_safe("with_python_bindings", False):
             self.requires("cpython/3.12.2")
             self.requires("pybind11/2.11.1")
+        if self.options.get_safe("with_cli", False):
+            self.requires("assimp/5.4.3")
+            self.requires("cxxopts/3.3.1")
+            self.requires("spdlog/1.15.1")
 
     def build_requirements(self):
         self.test_requires("standardprojectsettings/[>=0.1.0]")
@@ -151,6 +122,8 @@ class UvulaConan(ConanFile):
         tc.variables["WITH_PYTHON_BINDINGS"] = self.options.get_safe("with_python_bindings", False)
         if self.options.get_safe("with_python_bindings", False):
             tc.variables["PYUVULA_VERSION"] = self.version
+
+        tc.variables["WITH_CLI"] = self.options.get_safe("with_cli", False)
 
         if is_msvc(self):
             tc.variables["USE_MSVC_RUNTIME_LIBRARY_DLL"] = not is_msvc_static_runtime(self)
