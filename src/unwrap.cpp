@@ -6,17 +6,18 @@
 #include <iostream>
 #include <ostream>
 
-#include "xatlas_c.h"
 #include "xatlas.h"
+#include "xatlas_c.h"
 
-// NOTE: The UV-coords parameter already has the right size, and a pointer is set up towards its 'innards', please don't append, emplace, etc. or do anything to change its size or location.
+// NOTE: The UV-coords parameter already has the right size, and a pointer is set up towards its 'innards', please don't append, emplace, etc. or do anything to change its size or
+// location.
 bool unwrap_algo(
     const std::vector<std::tuple<float, float, float>>& vertices,
     const std::vector<std::tuple<int32_t, int32_t, int32_t>>& indices,
     uint32_t desired_definition,
     std::vector<std::tuple<float, float>>& uv_coords,
-    uint32_t &texture_width,
-    uint32_t &texture_height)
+    uint32_t& texture_width,
+    uint32_t& texture_height)
 {
     xatlas::Atlas* atlas = xatlas::Create();
 
@@ -35,7 +36,7 @@ bool unwrap_algo(
     }
 
     constexpr xatlas::ChartOptions chart_options;
-    const xatlas::PackOptions pack_options{.resolution = desired_definition};
+    const xatlas::PackOptions pack_options{ .resolution = desired_definition, .blockAlign = true, .bruteForce = true };
 
     xatlas::Generate(atlas, chart_options, pack_options);
 
@@ -43,14 +44,14 @@ bool unwrap_algo(
     texture_width = atlas->height;
     texture_height = atlas->width;
 
-    const xatlas::Mesh &output_mesh = *atlas->meshes;
+    const xatlas::Mesh& output_mesh = *atlas->meshes;
 
     const auto width = static_cast<float>(atlas->width);
     const auto height = static_cast<float>(atlas->height);
 
-    for (size_t i = 0 ; i<output_mesh.vertexCount ; ++i)
+    for (size_t i = 0; i < output_mesh.vertexCount; ++i)
     {
-        const xatlas::Vertex &vertex = output_mesh.vertexArray[i];
+        const xatlas::Vertex& vertex = output_mesh.vertexArray[i];
         uv_coords[vertex.xref] = std::make_tuple(vertex.uv[0] / width, vertex.uv[1] / height);
     }
 

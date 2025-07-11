@@ -18,6 +18,7 @@ message(STATUS "Configuring Uvula version: ${UVULA_VERSION}")
 set(UVULA_SRC
         src/unwrap.cpp
         src/xatlas.cpp
+        src/lscm_unwrap.cpp
 )
 add_library(libuvula STATIC ${UVULA_SRC})
 

@@ -1,7 +1,7 @@
 ﻿// (c) 2025, UltiMaker -- see LICENCE for details
 
-#include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
+#include <pybind11/pybind11.h>
 namespace py = pybind11;
 
 #include "unwrap.hpp"
@@ -24,7 +24,7 @@ py::tuple unwrap(const py::array_t<float>& vertices_, const py::array_t<int32_t>
     // output shaping
     std::vector<py::ssize_t> shape = { static_cast<py::ssize_t>(vertices.size()), 2 };
     std::vector<py::ssize_t> strides = { static_cast<py::ssize_t>(sizeof(float) * shape[1]), static_cast<py::ssize_t>(sizeof(float)) };
-    std::vector<std::tuple<float, float>> res(shape[0]);
+    std::vector<std::tuple<float, float>> res(shape[0], { 0.0, 0.0 });
     uint32_t texture_width;
     uint32_t texture_height;
 
@@ -35,14 +35,7 @@ py::tuple unwrap(const py::array_t<float>& vertices_, const py::array_t<int32_t>
     }
 
     // send output
-    return py::make_tuple(py::array(py::buffer_info(
-        res.data(),
-        strides[1],
-        py::format_descriptor<float>::format(),
-        shape.size(),
-        shape,
-        strides
-    )), texture_width, texture_height);
+    return py::make_tuple(py::array(py::buffer_info(res.data(), strides[1], py::format_descriptor<float>::format(), shape.size(), shape, strides)), texture_width, texture_height);
 }
 
 PYBIND11_MODULE(pyUvula, module)
