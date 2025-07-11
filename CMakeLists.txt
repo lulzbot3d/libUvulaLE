@@ -5,14 +5,14 @@ find_package(standardprojectsettings REQUIRED)
 option(EXTENSIVE_WARNINGS "Build with all warnings" ON)
 
 option(WITH_PYTHON_BINDINGS "Build with Python bindings: `pyUvula`" ON)
-if(WITH_PYTHON_BINDINGS)
-    set(PYUVULA_VERSION "1.0.0" CACHE STRING "Version of the pyuvula python bindings" )
+if (WITH_PYTHON_BINDINGS)
+    set(PYUVULA_VERSION "1.0.0" CACHE STRING "Version of the pyuvula python bindings")
     message(STATUS "Configuring pyUvula version: ${PYUVULA_VERSION}")
 endif ()
 
-if(NOT DEFINED UVULA_VERSION)
+if (NOT DEFINED UVULA_VERSION)
     message(FATAL_ERROR "UVULA_VERSION is not defined!")
-endif()
+endif ()
 message(STATUS "Configuring Uvula version: ${UVULA_VERSION}")
 
 set(UVULA_SRC
@@ -32,8 +32,8 @@ target_include_directories(libuvula
 )
 
 target_compile_definitions(libuvula
-    PUBLIC
-    UVULA_VERSION="${UVULA_VERSION}"
+        PUBLIC
+        UVULA_VERSION="${UVULA_VERSION}"
 )
 
 use_threads(libuvula)

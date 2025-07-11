@@ -10,6 +10,7 @@
 #include <map>
 #include <ranges>
 #include <set>
+#include <unordered_map>
 
 #include "xatlas.h"
 
@@ -2226,9 +2227,9 @@ static float deg2rad(float angle)
 }
 
 // Keep this
-static std::vector<std::vector<size_t>> make_faces_groups(const std::vector<Vertex>& vertices, const std::vector<Face>& faces, std::vector<UVCoord>& uv_coords)
+static std::vector<std::vector<size_t>> make_charts(const std::vector<Vertex>& vertices, const std::vector<Face>& faces, std::vector<UVCoord>& uv_coords)
 {
-    constexpr float project_angle_limit = 10.0;
+    constexpr float project_angle_limit = 20.0;
     constexpr float island_margin = 0.01;
     constexpr float area_weight = 0.0;
 
@@ -2371,7 +2372,7 @@ static std::vector<std::vector<size_t>> make_faces_groups(const std::vector<Vert
     // return true;
 }
 
-const std::vector<std::vector<size_t>> splitNonAdjacentFacesGroups(const std::vector<std::vector<size_t>>& grouped_faces, const std::vector<Face>& indices)
+std::vector<std::vector<size_t>> splitNonLinkedFacesCharts(const std::vector<std::vector<size_t>>& grouped_faces, const std::vector<Face>& indices)
 {
     std::vector<std::vector<size_t>> result;
 
@@ -2478,6 +2479,36 @@ const std::vector<std::vector<size_t>> splitNonAdjacentFacesGroups(const std::ve
     return result;
 }
 
+std::vector<Face> groupSimilarVertices(const std::vector<Face>& indices, const std::vector<Vertex>& vertices)
+{
+    std::vector<Face> faces_with_similar_indices;
+    std::map<Vertex, size_t> unique_vertices_indices;
+    std::vector<size_t> new_vertices_indices(vertices.size());
+
+    for (size_t i = 0; i < vertices.size(); ++i)
+    {
+        const Vertex& vertex = vertices[i];
+        auto iterator = unique_vertices_indices.find(vertex);
+        if (iterator == unique_vertices_indices.end())
+        {
+            // This is the very first time we see this position, register it
+            unique_vertices_indices[vertex] = i;
+            new_vertices_indices[i] = i;
+        }
+        else
+        {
+            new_vertices_indices[i] = iterator->second;
+        }
+    }
+
+    for (const Face& face : indices)
+    {
+        faces_with_similar_indices.emplace_back(new_vertices_indices[std::get<0>(face)], new_vertices_indices[std::get<1>(face)], new_vertices_indices[std::get<2>(face)]);
+    }
+
+    return faces_with_similar_indices;
+}
+
 bool unwrap_lscm(
     const std::vector<Vertex>& vertices,
     const std::vector<Face>& indices,
@@ -2486,25 +2517,9 @@ bool unwrap_lscm(
     uint32_t& texture_width,
     uint32_t& texture_height)
 {
-    std::vector<std::vector<size_t>> grouped_faces = make_faces_groups(vertices, indices, uv_coords);
-    // grouped_faces = splitNonAdjacentFacesGroups(grouped_faces, indices);
-
-    // float u_min = 0.0;
-    // float v_min = 0.0;
-    // for (const UVCoord& unpacked_uv_coords : uv_coords)
-    // {
-    //     u_min = std::min(std::get<0>(unpacked_uv_coords), u_min);
-    //     v_min = std::min(std::get<1>(unpacked_uv_coords), v_min);
-    // }
-    //
-    // if (u_min < 0.0 || v_min < 0.0)
-    // {
-    //     for (UVCoord& unpacked_uv_coords : uv_coords)
-    //     {
-    //         std::get<0>(unpacked_uv_coords) -= u_min;
-    //         std::get<1>(unpacked_uv_coords) -= v_min;
-    //     }
-    // }
+    std::vector<std::vector<size_t>> charts = make_charts(vertices, indices, uv_coords);
+    std::vector<Face> faces_with_similar_indices = groupSimilarVertices(indices, vertices);
+    charts = splitNonLinkedFacesCharts(charts, faces_with_similar_indices);
 
     printf("\rPacking charts\n");
 
@@ -2526,7 +2541,7 @@ bool unwrap_lscm(
     }
 
     const xatlas::PackOptions pack_options{ .resolution = desired_definition };
-    xatlas::SetCharts(atlas, grouped_faces);
+    xatlas::SetCharts(atlas, charts);
     xatlas::PackCharts(atlas, pack_options);
 
     // For some reason, the width and height need to be inverted to make the coordinates consistent
