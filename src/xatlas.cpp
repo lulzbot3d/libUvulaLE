@@ -10831,48 +10831,9 @@ AddMeshError AddUvMesh(Atlas* atlas, const UvMeshDecl& decl)
         mesh->texcoords.resize(decl.vertexCount);
         for (uint32_t i = 0; i < decl.vertexCount; i++)
             mesh->texcoords[i] = *((const internal::Vector2*)&((const uint8_t*)decl.vertexUvData)[decl.vertexStride * i]);
-        // Validate.
+
         mesh->faceIgnore.resize(decl.indexCount / 3);
         mesh->faceIgnore.zeroOutMemory();
-        const uint32_t kMaxWarnings = 50;
-        uint32_t warningCount = 0;
-        for (uint32_t f = 0; f < indexCount / 3; f++)
-        {
-            bool ignore = false;
-            uint32_t tri[3];
-            for (uint32_t i = 0; i < 3; i++)
-                tri[i] = mesh->indices[f * 3 + i];
-            // Check for nan UVs.
-            for (uint32_t i = 0; i < 3; i++)
-            {
-                const uint32_t vertex = tri[i];
-                if (internal::isNan(mesh->texcoords[vertex].x) || internal::isNan(mesh->texcoords[vertex].y))
-                {
-                    ignore = true;
-                    if (++warningCount <= kMaxWarnings)
-                        XA_PRINT("   NAN texture coordinate in vertex %u\n", vertex);
-                    break;
-                }
-            }
-            // Check for zero area faces.
-            if (! ignore)
-            {
-                const internal::Vector2& v1 = mesh->texcoords[tri[0]];
-                const internal::Vector2& v2 = mesh->texcoords[tri[1]];
-                const internal::Vector2& v3 = mesh->texcoords[tri[2]];
-                const float area = fabsf(((v2.x - v1.x) * (v3.y - v1.y) - (v3.x - v1.x) * (v2.y - v1.y)) * 0.5);
-                if (area <= internal::kAreaEpsilon)
-                {
-                    ignore = true;
-                    if (++warningCount <= kMaxWarnings)
-                        XA_PRINT("   Zero area face: %d, indices (%d %d %d), area is %f\n", f, tri[0], tri[1], tri[2], area);
-                }
-            }
-            if (ignore)
-                mesh->faceIgnore.set(f);
-        }
-        if (warningCount > kMaxWarnings)
-            XA_PRINT("   %u additional warnings truncated\n", warningCount - kMaxWarnings);
     }
     meshInstance->mesh = mesh;
     XA_PROFILE_END(addMeshCopyData)

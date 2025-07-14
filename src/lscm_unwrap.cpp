@@ -2452,7 +2452,6 @@ std::vector<std::vector<size_t>> splitNonLinkedFacesCharts(const std::vector<std
                     for (const size_t vertex_from_source_group : it_source_group->second)
                     {
                         size_t& vertex_group = new_indices_groups[vertex_from_source_group];
-                        // new_groups_vertices[vertex_group].extract(vertex_from_source_group);
                         vertex_group = target_group;
                         target_group_vertices.insert(vertex_from_source_group);
                     }
@@ -2509,13 +2508,7 @@ std::vector<Face> groupSimilarVertices(const std::vector<Face>& indices, const s
     return faces_with_similar_indices;
 }
 
-bool unwrap_lscm(
-    const std::vector<Vertex>& vertices,
-    const std::vector<Face>& indices,
-    uint32_t desired_definition,
-    std::vector<UVCoord>& uv_coords,
-    uint32_t& texture_width,
-    uint32_t& texture_height)
+bool unwrap_lscm(const std::vector<Vertex>& vertices, const std::vector<Face>& indices, std::vector<UVCoord>& uv_coords, uint32_t& texture_width, uint32_t& texture_height)
 {
     std::vector<std::vector<size_t>> charts = make_charts(vertices, indices, uv_coords);
     std::vector<Face> faces_with_similar_indices = groupSimilarVertices(indices, vertices);
@@ -2540,13 +2533,23 @@ bool unwrap_lscm(
         return false;
     }
 
-    const xatlas::PackOptions pack_options{ .resolution = desired_definition };
+    // Use a smaller calculation definition, which makes the calculation much faster and adds more margin between the islands, then scale it up
+    constexpr uint32_t calculation_definition = 512;
+    constexpr uint32_t desired_definition = 4096;
+
+    const xatlas::PackOptions pack_options{ .resolution = calculation_definition };
     xatlas::SetCharts(atlas, charts);
     xatlas::PackCharts(atlas, pack_options);
 
     // For some reason, the width and height need to be inverted to make the coordinates consistent
     texture_width = atlas->height;
     texture_height = atlas->width;
+
+    // Now scale up the size
+    const uint32_t max_side = std::max(texture_width, texture_height);
+    const double scale = static_cast<double>(desired_definition) / static_cast<double>(max_side);
+    texture_width = std::llrint(texture_width * scale);
+    texture_height = std::llrint(texture_height * scale);
 
     const xatlas::Mesh& output_mesh = *atlas->meshes;
 
@@ -2560,8 +2563,6 @@ bool unwrap_lscm(
     }
 
     xatlas::Destroy(atlas);
-    return true;
-
     return true;
 }
 

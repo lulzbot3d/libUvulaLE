@@ -22,9 +22,7 @@ int main(int argc, char** argv)
     options.add_options()("filepath", "Path of the 3D mesh file to be loaded (OBJ, STL, ...)", cxxopts::value<std::string>())(
         "o,outputfile",
         "Path of the output 3D mesh with UV coordinates (OBJ)",
-        cxxopts::value<std::string>())("d,definition", "The desired image definition, result should be close to it", cxxopts::value<uint32_t>()->default_value("512"))(
-        "h,help",
-        "Print this help and exit");
+        cxxopts::value<std::string>())("h,help", "Print this help and exit");
     options.parse_positional({ "filepath" });
     options.positional_help("<filepath>");
     options.show_positional_help();
@@ -40,7 +38,7 @@ int main(int argc, char** argv)
     spdlog::info("Loading mesh from {}", file_path);
 
     Assimp::Importer importer;
-    const aiScene* scene = importer.ReadFile(file_path, /*aiProcess_Triangulate | aiProcess_JoinIdenticalVertices*/ 0);
+    const aiScene* scene = importer.ReadFile(file_path, 0);
 
     if (! scene)
     {
@@ -101,7 +99,7 @@ int main(int argc, char** argv)
         spdlog::stopwatch timer;
 
         spdlog::info("Start UV unwrapping");
-        if (unwrap_lscm(vertices, indices, result["definition"].as<uint32_t>(), uv_coords, texture_width, texture_height))
+        if (unwrap_lscm(vertices, indices, uv_coords, texture_width, texture_height))
         {
             spdlog::info("Suggested texture size is {}x{}", texture_width, texture_height);
             spdlog::info("UV unwrapping took {}ms", timer.elapsed_ms().count());
