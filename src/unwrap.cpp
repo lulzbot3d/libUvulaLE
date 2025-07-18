@@ -66,8 +66,8 @@ std::vector<Vector> calculateProjectionNormals(const std::vector<FaceData>& face
 
     while (true)
     {
-        // Get all the faces that belong to the group of the current projection normal, by placing them at the beginning of the
-        // unprocessed faces
+        // Get all the faces that belong to the group of the current projection normal,
+        // by placing them at the beginning of the unprocessed faces
         FacesRange current_faces_group_range = unprocessed_faces;
         current_faces_group_range.end = std::partition(
             unprocessed_faces.begin,
@@ -76,7 +76,6 @@ std::vector<Vector> calculateProjectionNormals(const std::vector<FaceData>& face
             {
                 return face_data->normal.dot(*project_normal) > group_angle_limit_half_cos;
             });
-        current_faces_group_range.begin = unprocessed_faces.begin;
 
         // All the faces placed to the current group are now no more in the unprocessed faces
         unprocessed_faces.begin = current_faces_group_range.end;
