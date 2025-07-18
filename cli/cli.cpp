@@ -13,8 +13,10 @@
 #include <spdlog/spdlog.h>
 #include <spdlog/stopwatch.h>
 
-// #include "unwrap.hpp"
-#include "lscm_unwrap.h"
+#include "Face.h"
+#include "UVCoord.h"
+#include "Vertex.h"
+#include "unwrap.h"
 
 int main(int argc, char** argv)
 {
@@ -22,7 +24,7 @@ int main(int argc, char** argv)
     options.add_options()("filepath", "Path of the 3D mesh file to be loaded (OBJ, STL, ...)", cxxopts::value<std::string>())(
         "o,outputfile",
         "Path of the output 3D mesh with UV coordinates (OBJ)",
-        cxxopts::value<std::string>())("h,help", "Print this help and exit");
+        cxxopts::value<std::string>())("d,debug", "Display debug output")("h,help", "Print this help and exit");
     options.parse_positional({ "filepath" });
     options.positional_help("<filepath>");
     options.show_positional_help();
@@ -32,6 +34,11 @@ int main(int argc, char** argv)
     {
         std::cout << options.help() << std::endl;
         return 0;
+    }
+
+    if (result.count("debug"))
+    {
+        spdlog::set_level(spdlog::level::debug);
     }
 
     const std::string file_path = result["filepath"].as<std::string>();
@@ -77,7 +84,7 @@ int main(int argc, char** argv)
             spdlog::info("Processing (unnamed) mesh", mesh->mName.data);
         }
 
-        std::vector<std::tuple<float, float, float>> vertices;
+        std::vector<Vertex> vertices;
         vertices.reserve(mesh->mNumVertices);
         for (size_t j = 0; j < mesh->mNumVertices; j++)
         {
@@ -85,7 +92,7 @@ int main(int argc, char** argv)
             vertices.emplace_back(vertex.x, vertex.y, vertex.z);
         }
 
-        std::vector<std::tuple<int32_t, int32_t, int32_t>> indices;
+        std::vector<Face> indices;
         indices.reserve(mesh->mNumFaces);
         for (size_t j = 0; j < mesh->mNumFaces; j++)
         {
@@ -93,13 +100,13 @@ int main(int argc, char** argv)
             indices.emplace_back(face.mIndices[0], face.mIndices[1], face.mIndices[2]);
         }
 
-        std::vector<std::tuple<float, float>> uv_coords(mesh->mNumVertices, { 0.0, 0.0 });
+        std::vector<UVCoord> uv_coords(mesh->mNumVertices, { 0.0, 0.0 });
         uint32_t texture_width, texture_height;
 
         spdlog::stopwatch timer;
 
         spdlog::info("Start UV unwrapping");
-        if (unwrap_lscm(vertices, indices, uv_coords, texture_width, texture_height))
+        if (smartUnwrap(vertices, indices, uv_coords, texture_width, texture_height))
         {
             spdlog::info("Suggested texture size is {}x{}", texture_width, texture_height);
             spdlog::info("UV unwrapping took {}ms", timer.elapsed_ms().count());
@@ -125,10 +132,10 @@ int main(int argc, char** argv)
                         export_mesh->mTextureCoords[j] = new aiVector3D[export_mesh->mNumVertices];
                         for (size_t k = 0; k < export_mesh->mNumVertices; k++)
                         {
-                            const std::tuple<float, float>& uv = uv_coords[k];
+                            const UVCoord& uv = uv_coords[k];
                             aiVector3D& export_uv = export_mesh->mTextureCoords[j][k];
-                            export_uv.x = std::get<0>(uv);
-                            export_uv.y = std::get<1>(uv);
+                            export_uv.x = uv.u;
+                            export_uv.y = uv.v;
                         }
                     }
                     else

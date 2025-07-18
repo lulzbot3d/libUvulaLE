@@ -90,13 +90,13 @@ class UvulaConan(ConanFile):
 
 
     def requirements(self):
+        self.requires("spdlog/1.15.1")
         if self.options.get_safe("with_python_bindings", False):
             self.requires("cpython/3.12.2")
             self.requires("pybind11/2.11.1")
         if self.options.get_safe("with_cli", False):
             self.requires("assimp/5.4.3")
             self.requires("cxxopts/3.3.1")
-            self.requires("spdlog/1.15.1")
 
     def build_requirements(self):
         self.test_requires("standardprojectsettings/[>=0.1.0]")

@@ -2,6 +2,7 @@
 project(uvula)
 
 find_package(standardprojectsettings REQUIRED)
+find_package(spdlog REQUIRED)
 option(EXTENSIVE_WARNINGS "Build with all warnings" ON)
 
 option(WITH_PYTHON_BINDINGS "Build with Python bindings: `pyUvula`" ON)
@@ -16,14 +17,18 @@ endif ()
 message(STATUS "Configuring Uvula version: ${UVULA_VERSION}")
 
 set(UVULA_SRC
-        src/unwrap.cpp
         src/xatlas.cpp
-        src/lscm_unwrap.cpp
+        src/unwrap.cpp
+        src/Vector.cpp
+        src/Matrix.cpp
+        src/geometry_utils.cpp
 )
 add_library(libuvula STATIC ${UVULA_SRC})
 
 target_link_libraries(libuvula
-        PUBLIC)
+        PUBLIC
+        spdlog::spdlog
+)
 
 target_include_directories(libuvula
         PUBLIC
