@@ -3,6 +3,8 @@ project(uvula)
 
 find_package(standardprojectsettings REQUIRED)
 find_package(spdlog REQUIRED)
+find_package(range-v3 REQUIRED)
+
 option(EXTENSIVE_WARNINGS "Build with all warnings" ON)
 
 option(WITH_PYTHON_BINDINGS "Build with Python bindings: `pyUvula`" ON)
@@ -28,6 +30,7 @@ add_library(libuvula STATIC ${UVULA_SRC})
 target_link_libraries(libuvula
         PUBLIC
         spdlog::spdlog
+        range-v3::range-v3
 )
 
 target_include_directories(libuvula

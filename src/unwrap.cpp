@@ -5,9 +5,9 @@
 #include <algorithm>
 #include <map>
 #include <numeric>
-#include <ranges>
 #include <set>
 
+#include <range/v3/view/map.hpp>
 #include <spdlog/spdlog.h>
 
 #include "Face.h"
@@ -322,7 +322,7 @@ std::vector<std::vector<size_t>> splitNonLinkedFacesCharts(const std::vector<std
             new_faces_groups[new_indices_groups[face.i1]].push_back(face_index);
         }
 
-        for (const std::vector<size_t>& faces_indices : std::views::values(new_faces_groups))
+        for (const std::vector<size_t>& faces_indices : new_faces_groups | ranges::views::values)
         {
             result.push_back(faces_indices);
         }
