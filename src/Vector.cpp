@@ -1,6 +1,7 @@
 #include "Vector.h"
 
 #include <cmath>
+#include <limits>
 
 #include "Vertex.h"
 
