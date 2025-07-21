@@ -59,7 +59,7 @@ Usage:
 The algorithm works in 3 steps:
 * First one is grouping the faces of the mesh by normal proximity, so that we can make patches of faces that can be project without too much shrinking. The implementation of this step is inspired from the "Smart UV Project" from Blender.
 * The second step is to split the groups by spatial proximity. By doing so, you ensure that only consistent patches will be kept together, and not faces that have the same normal but not linked to each other.
-* Finally, all the patches should be placed on a texture to maximize the surface filling. For this we use the very effective packing method from [xatlas](ttps://github.com/jpcy/xatlas/)
+* Finally, all the patches should be placed on a texture to maximize the surface filling. For this we use the very effective packing method from [xatlas](https://github.com/jpcy/xatlas/)
 
 ## Performances
 
