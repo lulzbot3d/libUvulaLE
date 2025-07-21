@@ -2,6 +2,8 @@
 
 This library is a standalone UV-unwrapper for potentially big meshes, that provides grouped and non-overlapping patches of projected faces on a texture. They can be used e.g. for painting on a mesh.
 
+![Unwrapping a cute dinosaur](demo.png)
+
 ## Build
 
 This project uses conan2 as dependency manager, so building it should be straightforward if you have it installed properly:
@@ -51,3 +53,14 @@ Usage:
   -d, --debug           Display debug output
   -h, --help            Print this help and exit
 ```
+
+## Technical insights
+
+The algorithm works in 3 steps:
+* First one is grouping the faces of the mesh by normal proximity, so that we can make patches of faces that can be project without too much shrinking. The implementation of this step is inspired from the "Smart UV Project" from Blender.
+* The second step is to split the groups by spatial proximity. By doing so, you ensure that only consistent patches will be kept together, and not faces that have the same normal but not linked to each other.
+* Finally, all the patches should be placed on a texture to maximize the surface filling. For this we use the very effective packing method from [xatlas](ttps://github.com/jpcy/xatlas/)
+
+## Performances
+
+The unwrapping method was designed with performance in mind. For the benchmark, we used a dinosaur model which has 585,247 faces. The original version used the whole xatlas method, and was about 5 minutes long. So we replaced the faces grouping by a more simple version. Now the full unwrapping is ~3s for the same model.
