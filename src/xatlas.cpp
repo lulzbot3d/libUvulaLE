@@ -3824,7 +3824,7 @@ void PackCharts(Atlas* atlas, PackOptions packOptions)
         outputMesh.vertexCount = mesh->texcoords.size();
         outputMesh.indexCount = mesh->mesh->indices.size();
         outputMesh.chartCount = mesh->mesh->charts.size();
-        outputMesh.vertexArray = XA_ALLOC_ARRAY(Vertex, outputMesh.vertexCount);
+        outputMesh.vertexArray = XA_ALLOC_ARRAY(PlacedVertex, outputMesh.vertexCount);
         outputMesh.indexArray = XA_ALLOC_ARRAY(uint32_t, outputMesh.indexCount);
         outputMesh.chartArray = XA_ALLOC_ARRAY(Chart, outputMesh.chartCount);
         XA_PRINT("   UV mesh %u: %u vertices, %u triangles, %u charts\n", m, outputMesh.vertexCount, outputMesh.indexCount / 3, outputMesh.chartCount);
@@ -3832,7 +3832,7 @@ void PackCharts(Atlas* atlas, PackOptions packOptions)
         // Vertices.
         for (uint32_t v = 0; v < mesh->texcoords.size(); v++)
         {
-            Vertex& vertex = outputMesh.vertexArray[v];
+            PlacedVertex& vertex = outputMesh.vertexArray[v];
             vertex.uv[0] = mesh->texcoords[v].x;
             vertex.uv[1] = mesh->texcoords[v].y;
             vertex.xref = v;
