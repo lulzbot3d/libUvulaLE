@@ -4,7 +4,7 @@
 
 #include <optional>
 
-class Vertex;
+struct Vertex;
 
 class Vector
 {
