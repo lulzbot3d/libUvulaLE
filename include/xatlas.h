@@ -46,7 +46,7 @@ struct Chart
 };
 
 // Output vertex.
-struct Vertex
+struct PlacedVertex
 {
     int32_t atlasIndex; // Sub-atlas index. -1 if the vertex doesn't exist in any atlas.
     int32_t chartIndex; // -1 if the vertex doesn't exist in any chart.
@@ -59,7 +59,7 @@ struct Mesh
 {
     Chart* chartArray;
     uint32_t* indexArray;
-    Vertex* vertexArray;
+    PlacedVertex* vertexArray;
     uint32_t chartCount;
     uint32_t indexCount;
     uint32_t vertexCount;

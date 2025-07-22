@@ -429,7 +429,7 @@ bool packCharts(
     const auto height = static_cast<float>(atlas->height);
     for (size_t i = 0; i < output_mesh.vertexCount; ++i)
     {
-        const xatlas::Vertex& vertex = output_mesh.vertexArray[i];
+        const xatlas::PlacedVertex& vertex = output_mesh.vertexArray[i];
         uv_coords[vertex.xref] = UVCoord{ .u = vertex.uv[0] / width, .v = vertex.uv[1] / height };
     }
 
