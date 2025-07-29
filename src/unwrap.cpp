@@ -400,7 +400,7 @@ bool packCharts(
     if (xatlas::AddUvMesh(atlas, mesh) != xatlas::AddMeshError::Success)
     {
         xatlas::Destroy(atlas);
-        printf("\rError adding mesh\n");
+        spdlog::error("Error adding mesh");
         return false;
     }
 
