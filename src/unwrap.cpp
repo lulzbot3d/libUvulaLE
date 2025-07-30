@@ -55,51 +55,42 @@ std::vector<Vector> calculateProjectionNormals(const std::vector<FaceData>& face
             return &face_data;
         });
 
-    using FaceDataIterator = std::vector<const FaceData*>::iterator;
-    struct FacesRange
-    {
-        FaceDataIterator begin;
-        FaceDataIterator end;
-    };
-
     // The unprocessed_faces is a sub-range of the faces list, that contains all the faces that have not been assigned to a group yet.
-    FacesRange unprocessed_faces{ .begin = faces_to_process.begin(), .end = faces_to_process.end() };
+    auto unprocessed_faces = ranges::subrange(faces_to_process);
 
     while (true)
     {
         // Get all the faces that belong to the group of the current projection normal,
-        // by placing them at the beginning of the unprocessed faces
-        FacesRange current_faces_group_range = unprocessed_faces;
-        current_faces_group_range.end = std::partition(
-            unprocessed_faces.begin,
-            unprocessed_faces.end,
+        // by placing them at the end of the unprocessed faces
+        auto current_faces_group = std::ranges::partition(
+            unprocessed_faces,
             [&project_normal, &group_angle_limit_half_cos](const FaceData* face_data)
             {
-                return face_data->normal.dot(*project_normal) > group_angle_limit_half_cos;
+                return face_data->normal.dot(*project_normal) <= group_angle_limit_half_cos;
             });
 
         // All the faces placed to the current group are now no more in the unprocessed faces
-        unprocessed_faces.begin = current_faces_group_range.end;
+        unprocessed_faces = ranges::subrange(unprocessed_faces.begin(), current_faces_group.begin());
 
         // Sum all the normals of the current faces group to get the average direction
         Vector summed_normals = std::accumulate(
-            current_faces_group_range.begin,
-            current_faces_group_range.end,
+            current_faces_group.begin(),
+            current_faces_group.end(),
             Vector(),
             [](const Vector& normal, const FaceData* face_data)
             {
                 return normal + face_data->normal;
             });
-        if (summed_normals.normalize())
+        if (summed_normals.normalize()) [[likely]]
         {
             projection_normals.push_back(summed_normals);
         }
 
         // For the next iteration, try to find the most different remaining normal from all generated normals
         float best_outlier_angle = std::numeric_limits<float>::max();
-        FaceDataIterator best_outlier_face = faces_to_process.end();
+        auto best_outlier_face = faces_to_process.end();
 
-        for (auto iterator = unprocessed_faces.begin; iterator != unprocessed_faces.end; ++iterator)
+        for (auto iterator = unprocessed_faces.begin(); iterator != unprocessed_faces.end(); ++iterator)
         {
             float face_best_angle = std::numeric_limits<float>::lowest();
             for (const Vector& projection_normal : projection_normals)
@@ -120,8 +111,9 @@ std::vector<Vector> calculateProjectionNormals(const std::vector<FaceData>& face
             project_normal = &(*best_outlier_face)->normal;
 
             // Remove the faces from the unprocessed faces
-            std::iter_swap(best_outlier_face, unprocessed_faces.begin);
-            ++unprocessed_faces.begin;
+            const auto last_position = std::prev(unprocessed_faces.end());
+            std::iter_swap(best_outlier_face, last_position);
+            unprocessed_faces = ranges::subrange(unprocessed_faces.begin(), last_position);
         }
         else if (! projection_normals.empty())
         {
