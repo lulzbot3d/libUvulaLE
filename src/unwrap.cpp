@@ -7,6 +7,8 @@
 #include <numeric>
 #include <set>
 
+#include <range/v3/algorithm/partition.hpp>
+#include <range/v3/view/enumerate.hpp>
 #include <range/v3/view/map.hpp>
 #include <spdlog/spdlog.h>
 
@@ -55,21 +57,21 @@ std::vector<Vector> calculateProjectionNormals(const std::vector<FaceData>& face
         });
 
     using FaceDataIterator = std::vector<const FaceData*>::iterator;
-    struct FacesRange
+    struct FaceDataRange
     {
         FaceDataIterator begin;
         FaceDataIterator end;
     };
 
     // The unprocessed_faces is a sub-range of the faces list, that contains all the faces that have not been assigned to a group yet.
-    FacesRange unprocessed_faces{ .begin = faces_to_process.begin(), .end = faces_to_process.end() };
+    FaceDataRange unprocessed_faces = { .begin = faces_to_process.begin(), .end = faces_to_process.end() };
 
     while (true)
     {
         // Get all the faces that belong to the group of the current projection normal,
         // by placing them at the beginning of the unprocessed faces
-        FacesRange current_faces_group_range = unprocessed_faces;
-        current_faces_group_range.end = std::partition(
+        FaceDataRange current_faces_group{ .begin = unprocessed_faces.begin };
+        current_faces_group.end = ranges::partition(
             unprocessed_faces.begin,
             unprocessed_faces.end,
             [&project_normal, &group_angle_limit_half_cos](const FaceData* face_data)
@@ -78,29 +80,29 @@ std::vector<Vector> calculateProjectionNormals(const std::vector<FaceData>& face
             });
 
         // All the faces placed to the current group are now no more in the unprocessed faces
-        unprocessed_faces.begin = current_faces_group_range.end;
+        unprocessed_faces.begin = current_faces_group.end;
 
         // Sum all the normals of the current faces group to get the average direction
         Vector summed_normals = std::accumulate(
-            current_faces_group_range.begin,
-            current_faces_group_range.end,
+            current_faces_group.begin,
+            current_faces_group.end,
             Vector(),
             [](const Vector& normal, const FaceData* face_data)
             {
                 return normal + face_data->normal;
             });
-        if (summed_normals.normalize())
+        if (summed_normals.normalize()) [[likely]]
         {
             projection_normals.push_back(summed_normals);
         }
 
         // For the next iteration, try to find the most different remaining normal from all generated normals
-        float best_outlier_angle = 1.0;
+        float best_outlier_angle = std::numeric_limits<float>::max();
         FaceDataIterator best_outlier_face = faces_to_process.end();
 
         for (auto iterator = unprocessed_faces.begin; iterator != unprocessed_faces.end; ++iterator)
         {
-            float face_best_angle = -1.0f;
+            float face_best_angle = std::numeric_limits<float>::lowest();
             for (const Vector& projection_normal : projection_normals)
             {
                 face_best_angle = std::max(face_best_angle, projection_normal.dot((*iterator)->normal));
@@ -136,10 +138,8 @@ static std::vector<FaceData> makeFacesData(const std::vector<Vertex>& vertices, 
     std::vector<FaceData> faces_data;
     faces_data.reserve(faces.size());
 
-    for (size_t i = 0; i < faces.size(); i++)
+    for (const auto& [index, face] : faces | ranges::views::enumerate)
     {
-        const Face& face = faces[i];
-
         const Vertex& v1 = vertices[face.i1];
         const Vertex& v2 = vertices[face.i2];
         const Vertex& v3 = vertices[face.i3];
@@ -147,7 +147,7 @@ static std::vector<FaceData> makeFacesData(const std::vector<Vertex>& vertices, 
         const std::optional<Vector> triangle_normal = geometry_utils::triangleNormal(v1, v2, v3);
         if (triangle_normal.has_value())
         {
-            faces_data.push_back(FaceData{ &face, i, triangle_normal.value() });
+            faces_data.push_back(FaceData{ &face, index, triangle_normal.value() });
         }
     }
 
@@ -199,13 +199,13 @@ static std::vector<std::vector<size_t>> makeCharts(const std::vector<Vertex>& ve
 
     // Now project each faces according to the closest matching normal and create indices groups
     std::vector<std::vector<size_t>> grouped_faces_indices;
-    for (auto iterator = projected_faces_groups.begin(); iterator != projected_faces_groups.end(); ++iterator)
+    for (const auto& [normal, faces_data] : projected_faces_groups)
     {
-        const Matrix axis_mat = Matrix::makeOrthogonalBasis(*iterator->first);
+        const Matrix axis_mat = Matrix::makeOrthogonalBasis(*normal);
         std::vector<size_t> faces_group;
-        faces_group.reserve(iterator->second.size());
+        faces_group.reserve(faces_data.size());
 
-        for (const FaceData* face_from_group : iterator->second)
+        for (const FaceData* face_from_group : faces_data)
         {
             faces_group.push_back(face_from_group->face_index);
 
@@ -233,6 +233,12 @@ std::vector<std::vector<size_t>> splitNonLinkedFacesCharts(const std::vector<std
 {
     std::vector<std::vector<size_t>> result;
 
+    struct AssignedVertex
+    {
+        uint32_t index;
+        bool assigned;
+    };
+
     for (const std::vector<size_t>& faces_group : grouped_faces)
     {
         size_t max_group_index = 0; // Incrementing group index
@@ -244,25 +250,16 @@ std::vector<std::vector<size_t>> splitNonLinkedFacesCharts(const std::vector<std
         for (const size_t face_index : faces_group)
         {
             const Face& face = faces[face_index];
-            const auto it1 = new_indices_groups.find(face.i1);
-            const auto it2 = new_indices_groups.find(face.i2);
-            const auto it3 = new_indices_groups.find(face.i3);
-            const bool assigned1 = it1 != new_indices_groups.end();
-            const bool assigned2 = it2 != new_indices_groups.end();
-            const bool assigned3 = it3 != new_indices_groups.end();
-
             std::set<size_t> assigned_groups;
-            if (assigned1)
+            std::array<AssignedVertex, 3> assigned_vertices = { AssignedVertex{ .index = face.i1 }, AssignedVertex{ .index = face.i2 }, AssignedVertex{ .index = face.i3 } };
+            for (AssignedVertex& assigned_vertex : assigned_vertices)
             {
-                assigned_groups.insert(it1->second);
-            }
-            if (assigned2)
-            {
-                assigned_groups.insert(it2->second);
-            }
-            if (assigned3)
-            {
-                assigned_groups.insert(it3->second);
+                auto iterator = new_indices_groups.find(assigned_vertex.index);
+                assigned_vertex.assigned = iterator != new_indices_groups.end();
+                if (assigned_vertex.assigned)
+                {
+                    assigned_groups.insert(iterator->second);
+                }
             }
 
             if (assigned_groups.empty())
@@ -283,20 +280,13 @@ std::vector<std::vector<size_t>> splitNonLinkedFacesCharts(const std::vector<std
                 source_groups.erase(source_groups.begin());
 
                 // First assign vertices that are not assigned yet
-                if (! assigned1)
+                for (const AssignedVertex& assigned_vertex : assigned_vertices)
                 {
-                    new_indices_groups[face.i1] = target_group;
-                    target_group_vertices.insert(face.i1);
-                }
-                if (! assigned2)
-                {
-                    new_indices_groups[face.i2] = target_group;
-                    target_group_vertices.insert(face.i2);
-                }
-                if (! assigned3)
-                {
-                    new_indices_groups[face.i3] = target_group;
-                    target_group_vertices.insert(face.i3);
+                    if (! assigned_vertex.assigned)
+                    {
+                        new_indices_groups[assigned_vertex.index] = target_group;
+                        target_group_vertices.insert(assigned_vertex.index);
+                    }
                 }
 
                 // Now merge source groups to the target group, including actually processed vertices
@@ -344,19 +334,18 @@ std::vector<Face> groupSimilarVertices(const std::vector<Face>& faces, const std
     std::map<Vertex, size_t> unique_vertices_indices;
     std::vector<uint32_t> new_vertices_indices(vertices.size());
 
-    for (size_t i = 0; i < vertices.size(); ++i)
+    for (const auto [index, vertex] : vertices | ranges::views::enumerate)
     {
-        const Vertex& vertex = vertices[i];
         auto iterator = unique_vertices_indices.find(vertex);
         if (iterator == unique_vertices_indices.end())
         {
             // This is the very first time we see this position, register it
-            unique_vertices_indices[vertex] = i;
-            new_vertices_indices[i] = i;
+            unique_vertices_indices[vertex] = index;
+            new_vertices_indices[index] = index;
         }
         else
         {
-            new_vertices_indices[i] = iterator->second;
+            new_vertices_indices[index] = iterator->second;
         }
     }
 
@@ -400,7 +389,7 @@ bool packCharts(
     if (xatlas::AddUvMesh(atlas, mesh) != xatlas::AddMeshError::Success)
     {
         xatlas::Destroy(atlas);
-        printf("\rError adding mesh\n");
+        spdlog::error("Error adding mesh");
         return false;
     }
 
