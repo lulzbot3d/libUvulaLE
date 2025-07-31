@@ -9,6 +9,7 @@
 
 #include <range/v3/view/enumerate.hpp>
 #include <range/v3/view/map.hpp>
+#include <range/v3/view/subrange.hpp>
 #include <spdlog/spdlog.h>
 
 #include "Face.h"
@@ -56,7 +57,7 @@ std::vector<Vector> calculateProjectionNormals(const std::vector<FaceData>& face
         });
 
     // The unprocessed_faces is a sub-range of the faces list, that contains all the faces that have not been assigned to a group yet.
-    auto unprocessed_faces = std::ranges::subrange(faces_to_process);
+    auto unprocessed_faces = ranges::subrange(faces_to_process.begin(), faces_to_process.end());
 
     while (true)
     {
@@ -70,7 +71,7 @@ std::vector<Vector> calculateProjectionNormals(const std::vector<FaceData>& face
             });
 
         // All the faces placed to the current group are now no more in the unprocessed faces
-        unprocessed_faces = std::ranges::subrange(unprocessed_faces.begin(), current_faces_group.begin());
+        unprocessed_faces = ranges::subrange(unprocessed_faces.begin(), current_faces_group.begin());
 
         // Sum all the normals of the current faces group to get the average direction
         Vector summed_normals = std::accumulate(
@@ -113,7 +114,7 @@ std::vector<Vector> calculateProjectionNormals(const std::vector<FaceData>& face
             // Remove the faces from the unprocessed faces
             const auto last_position = std::prev(unprocessed_faces.end());
             std::iter_swap(best_outlier_face, last_position);
-            unprocessed_faces = std::ranges::subrange(unprocessed_faces.begin(), last_position);
+            unprocessed_faces = ranges::subrange(unprocessed_faces.begin(), last_position);
         }
         else if (! projection_normals.empty())
         {
