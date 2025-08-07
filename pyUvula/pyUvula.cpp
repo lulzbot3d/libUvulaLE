@@ -32,10 +32,14 @@ py::tuple unwrap(const py::array_t<float>& vertices_array, const py::array_t<int
     uint32_t texture_width;
     uint32_t texture_height;
 
-    // Do the actual calculation here
-    if (! smartUnwrap(vertices, indices, res, texture_width, texture_height))
     {
-        throw std::runtime_error("Couldn't unwrap UV's!");
+        py::gil_scoped_release release;
+
+        // Do the actual calculation here
+        if (! smartUnwrap(vertices, indices, res, texture_width, texture_height))
+        {
+            throw std::runtime_error("Couldn't unwrap UV's!");
+        }
     }
 
     // send output
